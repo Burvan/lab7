@@ -4,8 +4,6 @@ import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -13,103 +11,86 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
+import java.util.ArrayList;
 import javax.swing.*;
-import javax.swing.GroupLayout.Alignment;
+import javax.swing.event.HyperlinkEvent;
+import javax.swing.event.HyperlinkListener;
 
-
-@SuppressWarnings("serial")
 public class MainFrame extends JFrame {
-
     private static final String FRAME_TITLE = "Клиент мгновенных сообщений";
-
     private static final int FRAME_MINIMUM_WIDTH = 500;
     private static final int FRAME_MINIMUM_HEIGHT = 500;
-
     private static final int FROM_FIELD_DEFAULT_COLUMNS = 10;
     private static final int TO_FIELD_DEFAULT_COLUMNS = 20;
-    private static final int INCOMING_AREA_DEFAULT_ROWS = 10;
     private static final int OUTGOING_AREA_DEFAULT_ROWS = 5;
-
     private static final int SMALL_GAP = 5;
     private static final int MEDIUM_GAP = 10;
     private static final int LARGE_GAP = 15;
     private static final int SERVER_PORT = 4567;
-
+    private static final String SENDER_IP = "127.168.100.5";
     private final JTextField textFieldFrom;
     private final JTextField textFieldTo;
-   
-
-    private final JTextArea textAreaIncoming;
+    private final JTextPane textAreaIncoming;
     private final JTextArea textAreaOutgoing;
-   
-
+    private ArrayList<String> messageHistory = new ArrayList<>();
 
     public MainFrame() {
-
         super(FRAME_TITLE);
-
         setMinimumSize(new Dimension(FRAME_MINIMUM_WIDTH, FRAME_MINIMUM_HEIGHT));
-
-                                                                     // Центрирование окна
+        // Центрирование окна
         final Toolkit kit = Toolkit.getDefaultToolkit();
-        setLocation((kit.getScreenSize().width - getWidth()) / 2,
-                (kit.getScreenSize().height - getHeight()) / 2);
-
-                                                                     // Текстовая область для отображения полученных сообщений
-        textAreaIncoming = new JTextArea(INCOMING_AREA_DEFAULT_ROWS, 0);
+        setLocation((kit.getScreenSize().width - getWidth()) / 2, (kit.getScreenSize().height - getHeight()) / 2);
+        // Текстовая область для отображения полученных сообщений
+        textAreaIncoming = new JTextPane();
         textAreaIncoming.setEditable(false);
 
-                                                                     // Контейнер, обеспечивающий прокрутку текстовой области
+        //создание гиперссылки
+        textAreaIncoming.setContentType("text/html");
+        textAreaIncoming.setText("");
+
+        textAreaIncoming.addHyperlinkListener(new HyperlinkListener() {
+            @Override
+            public void hyperlinkUpdate(HyperlinkEvent hyperlinkEvent) {
+
+                if (hyperlinkEvent.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
+                    textFieldTo.setText(hyperlinkEvent.getDescription());
+                }
+            }
+        });
+
+
+        // Контейнер, обеспечивающий прокрутку текстовой области
         final JScrollPane scrollPaneIncoming = new JScrollPane(textAreaIncoming);
-
-                                                                     // Подписи полей
-        final JLabel labelFrom = new JLabel("Отправитель");
+        // Подписи полей
+        final JLabel labelFrom = new JLabel("Подпись");
         final JLabel labelTo = new JLabel("Получатель");
-
-                                                                     // Поля ввода имени пользователя и адреса получателя
+        // Поля ввода имени пользователя и адреса получателя
         textFieldFrom = new JTextField(FROM_FIELD_DEFAULT_COLUMNS);
         textFieldTo = new JTextField(TO_FIELD_DEFAULT_COLUMNS);
-
-                                                                     // Текстовая область для ввода сообщения
+        textFieldTo.setText(SENDER_IP);
+        // Текстовая область для ввода сообщения
         textAreaOutgoing = new JTextArea(OUTGOING_AREA_DEFAULT_ROWS, 0);
-
-                                                                     // Контейнер, обеспечивающий прокрутку текстовой области
+        // Контейнер, обеспечивающий прокрутку текстовой области
         final JScrollPane scrollPaneOutgoing = new JScrollPane(textAreaOutgoing);
-
-                                                                     // Панель ввода сообщения
+        // Панель ввода сообщения
         final JPanel messagePanel = new JPanel();
         messagePanel.setBorder(BorderFactory.createTitledBorder("Сообщение"));
-
-      
-
-                                                                     // Кнопка отправки сообщения
+        // Кнопка отправки сообщения
         final JButton sendButton = new JButton("Отправить");
-
         sendButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-               // date=getDateTime();
-                sendMessage();}
+                sendMessage();
+            }
         });
 
-                              
-
-
-
-                                                                     // Компоновка элементов панели "Сообщение"
+        // Компоновка элементов панели "Сообщение"
         final GroupLayout layout2 = new GroupLayout(messagePanel);
         messagePanel.setLayout(layout2);
         layout2.setHorizontalGroup(layout2.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(layout2.createParallelGroup(Alignment.TRAILING)
-                        .addGroup(layout2
-                                .createSequentialGroup()
+                .addGroup(layout2.createParallelGroup(GroupLayout.Alignment.TRAILING)
+                        .addGroup(layout2.createSequentialGroup()
                                 .addComponent(labelFrom)
                                 .addGap(SMALL_GAP)
                                 .addComponent(textFieldFrom)
@@ -118,33 +99,21 @@ public class MainFrame extends JFrame {
                                 .addGap(SMALL_GAP)
                                 .addComponent(textFieldTo))
                         .addComponent(scrollPaneOutgoing)
-                .addGroup(layout2
-                        .createSequentialGroup()
-                      
-                        .addGap(LARGE_GAP)
-                       
-                        .addGap(LARGE_GAP)
-                      
-                        .addGap(LARGE_GAP)
-                        .addComponent(sendButton)))
+                        .addComponent(sendButton))
                 .addContainerGap());
-
         layout2.setVerticalGroup(layout2.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(layout2
-                        .createParallelGroup(Alignment.BASELINE)
+                .addGroup(layout2.createParallelGroup(GroupLayout.Alignment.BASELINE)
                         .addComponent(labelFrom)
-                        .addComponent(textFieldFrom).addComponent(labelTo).addComponent(textFieldTo))
+                        .addComponent(textFieldFrom)
+                        .addComponent(labelTo)
+                        .addComponent(textFieldTo))
                 .addGap(MEDIUM_GAP)
                 .addComponent(scrollPaneOutgoing)
                 .addGap(MEDIUM_GAP)
-                .addGroup(layout2
-                        .createParallelGroup(Alignment.BASELINE)
-                       
-                        .addComponent(sendButton))
+                .addComponent(sendButton)
                 .addContainerGap());
-
-                                                                     // Компоновка элементов фрейма
+        // Компоновка элементов фрейма
         final GroupLayout layout1 = new GroupLayout(getContentPane());
         setLayout(layout1);
         layout1.setHorizontalGroup(layout1.createSequentialGroup()
@@ -153,7 +122,6 @@ public class MainFrame extends JFrame {
                         .addComponent(scrollPaneIncoming)
                         .addComponent(messagePanel))
                 .addContainerGap());
-
         layout1.setVerticalGroup(layout1.createSequentialGroup()
                 .addContainerGap()
                 .addComponent(scrollPaneIncoming)
@@ -161,118 +129,103 @@ public class MainFrame extends JFrame {
                 .addComponent(messagePanel)
                 .addContainerGap());
 
-                                                                     // Создание и запуск потока-обработчика запросов
-
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        final ServerSocket serverSocket = new ServerSocket(SERVER_PORT);
-                        while (!Thread.interrupted()) {
-                            final Socket socket = serverSocket.accept();
-                            final DataInputStream in = new DataInputStream(socket.getInputStream());
-                                                                                         // Читаем имя отправителя
-                            final String senderName = in.readUTF();
-                                                                                         // Читаем сообщение
-                            final String message = in.readUTF();
-                            final String Dat = in.readUTF();
-                                                                                         // Закрываем соединение
-                            socket.close();
-
-                                                                                         // Выделяем IP-адрес
-                            final String address = ((InetSocketAddress) socket
-                                    .getRemoteSocketAddress()).getAddress().getHostAddress();
-
-                          
-                                                                                                 // Выводим сообщение в текстовую область
-                                    
-                            textAreaIncoming.append(senderName +
-                            		" (" + address + "): " +
-                            		message + "\n");
+        // Создание и запуск потока-обработчика запросов
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    final ServerSocket serverSocket = new ServerSocket(SERVER_PORT);
+                    while (!Thread.interrupted()) {
+                        final Socket socket = serverSocket.accept();
+                        final DataInputStream in = new DataInputStream(socket.getInputStream());
+                        // Читаем имя отправителя
+                        final String senderName = in.readUTF();
+                        // Читаем сообщение
+                        final String message = in.readUTF();
+                        // Закрываем соединение
+                        socket.close();
+                        // Выделяем IP-адрес
+                        final String address =
+                                ((InetSocketAddress) socket
+                                        .getRemoteSocketAddress())
+                                        .getAddress()
+                                        .getHostAddress();
+                        // Выводим сообщение в текстовую область
+                        StringBuilder reformattedMessage = new StringBuilder();
+                        for (int i = 0; i < message.length(); i++) {
+                            if(message.charAt(i) == '\n') {
+                                reformattedMessage.append("<br>");
+                            } else {
+                                reformattedMessage.append(message.charAt(i));
+                            }
                         }
-                            
-
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                        JOptionPane.showMessageDialog(MainFrame.this, "Ошибка в работе сервера",
-                                "Ошибка", JOptionPane.ERROR_MESSAGE);
+                        messageHistory.add("<a href = " + address + ">" + senderName + ":</a> " + reformattedMessage);
+                        StringBuilder displayMessage = new StringBuilder();
+                        for (String someMessage : messageHistory) {
+                            displayMessage.append(someMessage).append("<br>");
+                        }
+                        textAreaIncoming.setText(displayMessage.toString());
                     }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    JOptionPane.showMessageDialog(MainFrame.this,
+                            "Ошибка в работе сервера", "Ошибка",
+                            JOptionPane.ERROR_MESSAGE);
                 }
-            }).start();
-
+            }
+        }).start();
     }
 
-  
-
-    
-                                                                 // метод отправки сообщений
+    //серверная часть
     private void sendMessage() {
         try {
-                                                                         // Получаем необходимые параметры
+            // Получаем необходимые параметры
             final String senderName = textFieldFrom.getText();
             final String destinationAddress = textFieldTo.getText();
             final String message = textAreaOutgoing.getText();
-            
-                                                                         // Убеждаемся, что поля не пустые
-
+            // Убеждаемся, что поля не пустые
             if (senderName.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Введите имя отправителя", "Ошибка",
+                JOptionPane.showMessageDialog(this,
+                        "Введите имя отправителя", "Ошибка",
                         JOptionPane.ERROR_MESSAGE);
-                textFieldFrom.grabFocus();
                 return;
             }
-
             if (destinationAddress.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Введите адрес узла-получателя", "Ошибка",
+                JOptionPane.showMessageDialog(this,
+                        "Введите адрес узла-получателя", "Ошибка",
                         JOptionPane.ERROR_MESSAGE);
-                textFieldTo.grabFocus();
                 return;
             }
             if (message.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Введите текст сообщения", "Ошибка",
+                JOptionPane.showMessageDialog(this,
+                        "Введите текст сообщения", "Ошибка",
                         JOptionPane.ERROR_MESSAGE);
-                textAreaOutgoing.grabFocus();
                 return;
             }
-
-                                                                         // Создаем сокет для соединения
+            // Создаем сокет для соединения
             final Socket socket = new Socket(destinationAddress, SERVER_PORT);
-
-                                                                         // Открываем поток вывода данных
+            // Открываем поток вывода данных
             final DataOutputStream out = new DataOutputStream(socket.getOutputStream());
-
-                                                                         // Записываем в поток имя
+            // Записываем в поток имя
             out.writeUTF(senderName);
-                                                                         // Записываем в поток сообщение
+            // Записываем в поток сообщение
             out.writeUTF(message);
-            
-                                                                         // Закрываем сокет
+            // Закрываем сокет
             socket.close();
-            textAreaIncoming.append("Я -> " + destinationAddress + ": "
-            		+ message + "\n");
-
-            // Помещаем сообщения в текстовую область вывода
-         //   textAreaIncoming.append(Datt+"  Я -> " + destinationAddress + ": " + message + "\n");
-
-                                                                         // Очищаем текстовую область ввода сообщения
+            // Очищаем текстовую область ввода сообщения
             textAreaOutgoing.setText("");
-
-        }
-
-        catch (UnknownHostException e) {
+        } catch (UnknownHostException e) {
             e.printStackTrace();
             JOptionPane.showMessageDialog(MainFrame.this,
                     "Не удалось отправить сообщение: узел-адресат не найден",
                     "Ошибка", JOptionPane.ERROR_MESSAGE);
-        }
-
-        catch (IOException e) {
+        } catch (IOException e) {
             e.printStackTrace();
-            JOptionPane.showMessageDialog(MainFrame.this, "Не удалось отправить сообщение",
-                    "Ошибка",JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(MainFrame.this,
+                    "Не удалось отправить сообщение", "Ошибка",
+                    JOptionPane.ERROR_MESSAGE);
         }
     }
-
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(new Runnable() {
@@ -284,5 +237,4 @@ public class MainFrame extends JFrame {
             }
         });
     }
-
 }
